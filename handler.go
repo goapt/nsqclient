@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/verystar/golib/debug"
-	"github.com/verystar/golib/logger"
+	"github.com/verystar/logger"
 	"github.com/verystar/nsqclient/delay"
 	"github.com/nsqio/go-nsq"
 )

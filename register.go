@@ -8,7 +8,7 @@ import (
 	gonsq "github.com/nsqio/go-nsq"
 	"github.com/verystar/golib/color"
 	"github.com/verystar/golib/debug"
-	"github.com/verystar/golib/logger"
+	"github.com/verystar/logger"
 )
 
 func Run(group string, ctx context.Context, conf Config) {
@@ -97,7 +97,7 @@ func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTo
 		if err != nil {
 			d.Tag(h.GetTopic()+":"+h.GetChannel(), err.Error())
 
-			log.Log(logger.Compile(err.Error()), "[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
+			log.Error("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
 				"error":   err.Error(),
 				"channel": h.GetTopic() + ":" + h.GetChannel(),
 				"data":    string(m.Body),

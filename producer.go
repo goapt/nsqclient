@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/verystar/golib/logger"
+	"github.com/verystar/logger"
 	"github.com/verystar/nsqclient/pool"
 )
 

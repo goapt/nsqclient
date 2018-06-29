@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/verystar/golib/color"
-	"github.com/verystar/golib/logger"
+	"github.com/verystar/logger"
 	"github.com/nsqio/go-nsq"
 )
 
