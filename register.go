@@ -11,6 +11,18 @@ import (
 	"github.com/verystar/logger"
 )
 
+type debugError struct {
+	s string
+}
+
+func NewDebugError(text string) error {
+	return &debugError{text}
+}
+
+func (e *debugError) Error() string {
+	return e.s
+}
+
 func Run(group string, ctx context.Context, conf Config) {
 	stop := make(chan struct{})
 	defer close(stop)
@@ -97,11 +109,19 @@ func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTo
 		if err != nil {
 			d.Tag(h.GetTopic()+":"+h.GetChannel(), err.Error())
 
-			log.Error("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
-				"error":   err.Error(),
-				"channel": h.GetTopic() + ":" + h.GetChannel(),
-				"data":    string(m.Body),
-			})
+			if _, ok := err.(*ignoreLogError); !ok {
+				log.Error("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
+					"error":   err.Error(),
+					"channel": h.GetTopic() + ":" + h.GetChannel(),
+					"data":    string(m.Body),
+				})
+			} else {
+				log.Debug("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
+					"error":   err.Error(),
+					"channel": h.GetTopic() + ":" + h.GetChannel(),
+					"data":    string(m.Body),
+				})
+			}
 
 			should, t := h.GetShouldRequeue(m)
 			if should {
