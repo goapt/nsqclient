@@ -7,10 +7,11 @@ import (
 	"github.com/verystar/logger"
 	"github.com/verystar/nsqclient/delay"
 	"github.com/nsqio/go-nsq"
+	"sync"
 )
 
 var _ INsqHandler = (*NsqHandler)(nil)
-
+var mu sync.Mutex
 type HandleFunc func(debug *debug.DebugTag, log logger.ILogger, message *nsq.Message) error
 
 var NsqGroups = make(map[string][]INsqHandler)
@@ -58,6 +59,8 @@ func (h *NsqHandler) GetHandle() HandleFunc {
 }
 
 func (h *NsqHandler) GetMaxAttepts() uint16 {
+	mu.Lock()
+	defer mu.Unlock()
 	if h.MaxAttepts == 0 {
 		h.MaxAttepts = 100
 	}
@@ -77,6 +80,8 @@ func (h *NsqHandler) GetShouldRequeue(message *nsq.Message) (bool, time.Duration
 }
 
 func (h *NsqHandler) Group(group string) {
+	mu.Lock()
+	defer mu.Unlock()
 	NsqGroups[group] = append(NsqGroups[group], h)
 }
 
