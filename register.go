@@ -107,16 +107,16 @@ func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTo
 		hd := h.GetHandle()
 		err := hd(d, log, m)
 		if err != nil {
-			d.Tag(h.GetTopic()+":"+h.GetChannel(), err.Error())
+			d.Tag(h.GetTopic()+":"+h.fGetChannel(), err.Error())
 
 			if _, ok := err.(*debugError); !ok {
-				log.Error("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
+				log.Errorf("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
 					"error":   err.Error(),
 					"channel": h.GetTopic() + ":" + h.GetChannel(),
 					"data":    string(m.Body),
 				})
 			} else {
-				log.Debug("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
+				log.Debugf("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
 					"error":   err.Error(),
 					"channel": h.GetTopic() + ":" + h.GetChannel(),
 					"data":    string(m.Body),
