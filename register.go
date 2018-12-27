@@ -59,6 +59,8 @@ func runMulti(ctx context.Context, group string, conf Config) bool {
 	}
 
 	for _, h := range NsqGroups[group] {
+		h.RunInit()
+
 		for i := 0; i < h.GetSize(); i++ {
 			go runNsqConsumer(ctx, h, conf, false)
 

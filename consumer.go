@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/nsqio/go-nsq"
 	"github.com/pkg/errors"
 	"github.com/verystar/golib/color"
 	"github.com/verystar/logger"
-	"github.com/nsqio/go-nsq"
 )
 
 type NsqConsumer struct {

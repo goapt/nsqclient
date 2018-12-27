@@ -17,4 +17,6 @@ type INsqHandler interface {
 	IsOpenChannelTopic() bool
 	GetChannelTopic() string
 	GetSize() int
+	Init(fn func())
+	RunInit()
 }
