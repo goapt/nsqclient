@@ -1,6 +1,7 @@
 package nsqclient
 
 import (
+	`context`
 	"sync"
 	"time"
 
@@ -24,7 +25,7 @@ type NsqHandler struct {
 	MaxAttepts       uint16
 	OpenChannelTopic bool // 是否开启独立的topic [Topic.Channel]
 	Handler          HandleFunc
-	initFn           func()
+	initFn           func(ctx context.Context)
 	shouldRequeue    func(message *nsq.Message) (bool, time.Duration)
 }
 
@@ -36,12 +37,12 @@ func NewNsqHandler(options ... func(*NsqHandler)) *NsqHandler {
 	return handler
 }
 
-func (h *NsqHandler) Init(fn func()) {
+func (h *NsqHandler) Init(fn func(ctx context.Context)) {
 	h.initFn = fn
 }
 
-func (h *NsqHandler) RunInit() {
-	h.initFn()
+func (h *NsqHandler) RunInit(ctx context.Context) {
+	h.initFn(ctx)
 }
 
 func (h *NsqHandler) GetTopic() string {

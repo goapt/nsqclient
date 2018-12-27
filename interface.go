@@ -1,6 +1,7 @@
 package nsqclient
 
 import (
+	`context`
 	"github.com/nsqio/go-nsq"
 	"time"
 )
@@ -17,6 +18,6 @@ type INsqHandler interface {
 	IsOpenChannelTopic() bool
 	GetChannelTopic() string
 	GetSize() int
-	Init(fn func())
-	RunInit()
+	Init(fn func(ctx context.Context))
+	RunInit(ctx context.Context)
 }
