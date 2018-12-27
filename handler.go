@@ -42,7 +42,9 @@ func (h *NsqHandler) Init(fn func(ctx context.Context)) {
 }
 
 func (h *NsqHandler) RunInit(ctx context.Context) {
-	h.initFn(ctx)
+	if h.initFn != nil {
+		h.initFn(ctx)
+	}
 }
 
 func (h *NsqHandler) GetTopic() string {
