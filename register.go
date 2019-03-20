@@ -127,7 +127,8 @@ func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTo
 
 			should, t := h.GetShouldRequeue(m)
 			if should {
-				m.Requeue(t)
+				m.RequeueWithoutBackoff(t)
+				//m.Requeue(t)
 			}
 		}
 		m.Finish()
