@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pkg/errors"
 	"github.com/verystar/golib/color"
 	"github.com/verystar/logger"
 )
@@ -44,10 +43,11 @@ func (n *NsqConsumer) AddHandler(handler nsq.Handler) {
 
 func (n *NsqConsumer) Run(conf Config) {
 	if len(n.Handlers) == 0 {
-		errors.New("Handler Is Empty")
+		logger.Error("Handler Is Empty")
+		return
 	}
 	for _, handler := range n.Handlers {
-		n.Consumer.AddHandler(handler)
+		n.Consumer.AddConcurrentHandlers(handler,10)
 	}
 	if err := n.Consumer.ConnectToNSQD(conf.Host + ":" + conf.Port); err != nil {
 		logger.Error("nsq:ConnectToNSQD", err)

@@ -82,6 +82,7 @@ func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTo
 
 	manager, err := NewNsqConsumer(ctx, topic, h.GetChannel(), func(nc *gonsq.Config) {
 		nc.MaxAttempts = h.GetMaxAttepts()
+		nc.MaxInFlight = 10
 	})
 
 	if err != nil {
