@@ -13,6 +13,8 @@ github.com/getsentry/raven-go v0.2.0 h1:no+xWJRb5ZI7eE8TWgIq1jLulQiIoLG0IfYxv5JY
 github.com/getsentry/raven-go v0.2.0/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
 github.com/goapt/golib v1.0.3 h1:DcDhqFOhZqc3XhrjPfTQDOsnLDdDH8muzxQjrP4W38s=
 github.com/goapt/golib v1.0.3/go.mod h1:Ar54R5MivkzZ3BJwnev+qDxrwYcUTArbZBcsaGy52R8=
+github.com/goapt/golib v1.0.4 h1:Ht4oM2qskFYsa6/Lju6C4fs8yS5O3BrwLjAAsnQ3LYw=
+github.com/goapt/golib v1.0.4/go.mod h1:K5guGGfkF3ANPI4eJ2T9Bvl/CwYIbHIwfvew7E+2nFw=
 github.com/goapt/logger v1.1.9/go.mod h1:tUjCWbK8Ifi0YuG3cH3cB1XbeKMGkuEaBFE5VHW4hGc=
 github.com/goapt/logger v1.1.10 h1:nBjDEjlF4RgBTqI1Z5UJkMQc/hz4DZq0NAlV2zq1hm8=
 github.com/goapt/logger v1.1.10/go.mod h1:AaC6zpStrF7KxBwgSnGeoTnHznDkh8jAL8tmboBsImA=
@@ -42,6 +44,7 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1w=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/verystar/golib v0.0.0-20181009105120-332bcd6f72e2 h1:5PJX9gUqxaYOmx9W0lOztKs/EL5b1ViLsu+hHWmy+GU=
 github.com/verystar/golib v0.0.0-20181009105120-332bcd6f72e2/go.mod h1:Bfm0IV5SyZbIgTfJQsXdJz8hxgoAZRcYuDikhju8T+g=
 github.com/verystar/logger v1.0.1 h1:Yf3onnuYIP4QSN25whSygPr1Ga7i7F+c7E79a4O/OwU=
@@ -54,3 +57,5 @@ golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a h1:aYOabOQFp6Vj6W1F80affTUvO9UxmJRx8K0gsfABByQ=
 golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
