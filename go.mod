@@ -7,5 +7,5 @@ require (
 	github.com/goapt/logger v1.1.10
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/nsqio/go-nsq v1.0.8
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.9.0
 )
