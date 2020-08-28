@@ -6,5 +6,5 @@ require (
 	github.com/goapt/golib v1.0.4
 	github.com/goapt/logger v1.3.0
 	github.com/nsqio/go-nsq v1.0.8
-	github.com/pkg/errors v0.9.0
+	github.com/pkg/errors v0.9.1
 )
