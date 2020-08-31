@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       nsq:
-        image: nsqio/nsq
+        image: fifsky/nsqd
         ports:
           - 4150:4150
     steps:
