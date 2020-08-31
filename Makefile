@@ -15,13 +15,6 @@ test:
 cover:
 	$(GO) tool cover -func=cover.out -o cover_total.out
 	$(GO) tool cover -html=cover.out -o cover.html
-.PHONY: conf
-conf:
-	kubectl get secret mp.dev.env --context=verypay --namespace=pay -o=jsonpath="{.data.\.env}" | base64 --decode > .env
-
-.PHONY: pushconf
-pushconf:
-	kubectl create secret generic mp.dev.env --context=verypay --namespace=pay --from-file .env=.env --dry-run -o yaml | kubectl apply -f -
 
 .PHONY: fmt
 fmt:
@@ -39,15 +32,3 @@ fmt-check:
 
 vet:
 	$(GO) vet $(VETPACKAGES)
-
-.PHONY: deploy
-deploy:
-	skaffold run -n pay --tail
-
-.PHONY: envdrone
-envdrone:
-	@drone orgsecret update template env_conf @.env
-
-.PHONY: mysql-test
-mysql-test:
-	@docker-compose up -d mysql
