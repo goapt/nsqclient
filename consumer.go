@@ -3,15 +3,17 @@ package nsqclient
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/goapt/logger"
 	"github.com/nsqio/go-nsq"
-	"github.com/verystar/golib/color"
-	"github.com/verystar/logger"
+
+	"github.com/goapt/nsqclient/internal/color"
 )
 
 type NsqConsumer struct {
-	Consumer *nsq.Consumer
-	Handlers []nsq.Handler
+	consumer *nsq.Consumer
+	handler  nsq.Handler
 	ctx      context.Context
 	topic    string
 	channel  string
@@ -20,7 +22,8 @@ type NsqConsumer struct {
 func NewNsqConsumer(ctx context.Context, topic, channel string, options ...func(*nsq.Config)) (*NsqConsumer, error) {
 	conf := nsq.NewConfig()
 	conf.MaxAttempts = 0
-
+	conf.MsgTimeout = 10 * time.Minute         // 默认一个消息最多能处理十分钟，否则就会重新丢入队列
+	conf.LookupdPollInterval = 3 * time.Second // 调整consumer的重连间隔时间为3秒
 	for _, option := range options {
 		option(conf)
 	}
@@ -30,7 +33,7 @@ func NewNsqConsumer(ctx context.Context, topic, channel string, options ...func(
 		return nil, err
 	}
 	return &NsqConsumer{
-		Consumer: consumer,
+		consumer: consumer,
 		ctx:      ctx,
 		topic:    topic,
 		channel:  channel,
@@ -38,18 +41,14 @@ func NewNsqConsumer(ctx context.Context, topic, channel string, options ...func(
 }
 
 func (n *NsqConsumer) AddHandler(handler nsq.Handler) {
-	n.Handlers = append(n.Handlers, handler)
+	n.handler = handler
 }
 
-func (n *NsqConsumer) Run(conf Config) {
-	if len(n.Handlers) == 0 {
-		logger.Error("Handler Is Empty")
-		return
-	}
-	for _, handler := range n.Handlers {
-		n.Consumer.AddConcurrentHandlers(handler,10)
-	}
-	if err := n.Consumer.ConnectToNSQD(conf.Host + ":" + conf.Port); err != nil {
+func (n *NsqConsumer) Run(conf *Config, concurrency int) {
+	n.consumer.ChangeMaxInFlight(concurrency)
+	n.consumer.AddConcurrentHandlers(n.handler, concurrency)
+
+	if err := n.consumer.ConnectToNSQD(conf.Host + ":" + conf.Port); err != nil {
 		logger.Error("nsq:ConnectToNSQD", err)
 		return
 	}
@@ -57,7 +56,7 @@ func (n *NsqConsumer) Run(conf Config) {
 		select {
 		case <-n.ctx.Done():
 			fmt.Println(color.Yellow("[%s] %s,%s", "stop consumer", n.topic, n.channel))
-			n.Consumer.Stop()
+			n.consumer.Stop()
 			fmt.Println(color.Yellow("[%s] %s,%s", "stop consumer success", n.topic, n.channel))
 			return
 		}

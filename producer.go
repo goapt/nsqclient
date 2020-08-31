@@ -2,98 +2,65 @@ package nsqclient
 
 import (
 	"errors"
-	"log"
-	"os"
-	"strings"
+	"time"
 
-	"github.com/nsqio/go-nsq"
-	"github.com/verystar/logger"
-	"github.com/verystar/nsqclient/pool"
+	"github.com/goapt/nsqclient/internal/pool"
 )
 
-var (
-	nsqList map[string]pool.Pool
-	errs    []string
-)
-
-type Config struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	InitSize int    `toml:"init_size" json:"init_size"`
-	MaxSize  int    `toml:"max_size" json:"max_size"`
+type Producer interface {
+	Publish(topic string, body []byte) error
+	MultiPublish(topic string, body [][]byte) error
+	DeferredPublish(topic string, delay time.Duration, body []byte) error
 }
 
-func Connect(configs map[string]Config) {
-	defer func() {
-		if len(errs) > 0 {
-			panic("[nsq] " + strings.Join(errs, "\n"))
-		}
-	}()
+var _ Producer = (*producer)(nil)
 
-	nsqList = make(map[string]pool.Pool)
-
-	for name, conf := range configs {
-		n, err := NewProducerPool(conf.Host+":"+conf.Port, conf.InitSize, conf.MaxSize)
-		logger.Debug("[nsq] connect:" + conf.Host + ":" + conf.Port)
-		if err == nil {
-			nsqList[name] = n
-		} else {
-			errs = append(errs, err.Error())
-		}
-	}
+type producer struct {
+	pool pool.Pool
 }
 
-func Client(name ... string) (pool.Pool, bool) {
-	key := "default"
-	if len(name) > 0 {
-		key = name[0]
-	}
-	n, ok := nsqList[key]
-	return n, ok
-}
-
-// CreateNSQProducerPool create a nwq producer pool
-func NewProducerPool(addr string, initSize, maxSize int) (pool.Pool, error) {
-	factory := func() (*nsq.Producer, error) {
-		return NewProducer(addr)
-	}
-	nsqPool, err := pool.NewChannelPool(initSize, maxSize, factory)
-	if err != nil {
-		return nil, err
-	}
-	return nsqPool, nil
-}
-
-// CreateNSQProducer create nsq producer
-func NewProducer(addr string) (*nsq.Producer, error) {
-	cfg := nsq.NewConfig()
-	producer, err := nsq.NewProducer(addr, cfg)
-	if err != nil {
-		return nil, err
-	}
-	producer.SetLogger(log.New(os.Stderr, "", log.Flags()), nsq.LogLevelError)
-	return producer, nil
-}
-
-func Publish(topic string, body []byte, nsqName ...string) error {
-	nsqlist, ok := Client(nsqName...)
-
+func NewProducer(name string) (*producer, error) {
+	p, ok := Client(name)
 	if !ok {
-		return errors.New("nsq producer config not found")
+		return nil, errors.New("nsq producer config not found")
 	}
+	return &producer{
+		pool: p,
+	}, nil
+}
 
-	nsc, err := nsqlist.Get()
-	defer nsc.Close()
+func (p *producer) Publish(topic string, body []byte) error {
+	nsq, err := p.pool.Get()
 	if err != nil {
 		return err
 	}
+	defer nsq.Close()
 
-	err = retry(2, func() error {
-		return nsc.Publish(topic, body)
+	return retry(2, func() error {
+		return nsq.Publish(topic, body)
 	})
+}
 
+func (p *producer) MultiPublish(topic string, body [][]byte) error {
+	nsq, err := p.pool.Get()
 	if err != nil {
 		return err
 	}
-	return nil
+	defer nsq.Close()
+
+	return retry(2, func() error {
+		return nsq.MultiPublish(topic, body)
+	})
+}
+
+func (p *producer) DeferredPublish(topic string, delay time.Duration, body []byte) error {
+	nsq, err := p.pool.Get()
+	if err != nil {
+		return err
+	}
+	defer nsq.Close()
+
+	return retry(2, func() error {
+		return nsq.DeferredPublish(topic, delay, body)
+	})
 }

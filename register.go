@@ -3,37 +3,26 @@ package nsqclient
 import (
 	"context"
 	"fmt"
+	"log"
+	"runtime"
 	"time"
 
+	"github.com/goapt/logger"
 	gonsq "github.com/nsqio/go-nsq"
-	"github.com/verystar/golib/color"
-	"github.com/verystar/golib/debug"
-	"github.com/verystar/logger"
+
+	"github.com/goapt/nsqclient/internal/color"
 )
 
-type debugError struct {
-	s string
-}
-
-func NewDebugError(text string) error {
-	return &debugError{text}
-}
-
-func (e *debugError) Error() string {
-	return e.s
-}
-
-func Run(group string, ctx context.Context, conf Config) {
+func Run(group string, ctx context.Context) {
 	stop := make(chan struct{})
 	defer close(stop)
-	if !runMulti(ctx, group, conf) {
+	if !runMulti(ctx, group) {
 		panic("未匹配到NSQ的运行时参数")
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			debug.Tag("ctx2.Done")
 			// 给3秒的处理时间
 			fmt.Println(color.Yellow("%s", "----------------------------------"))
 			fmt.Println(color.Yellow("%s , %s", "| give nsq consumer 3 second", "... |"))
@@ -48,98 +37,164 @@ END:
 	<-stop
 }
 
-func Register(h INsqHandler, group string) {
-	h.Group(group)
+func Register(group string, h ...*NsqHandler) {
+	for _, v := range h {
+		v.group(group)
+	}
 }
 
-func runMulti(ctx context.Context, group string, conf Config) bool {
+func runMulti(ctx context.Context, group string) bool {
 
-	if _, check := NsqGroups[group]; !check {
+	if _, check := nsqGroups[group]; !check {
 		return false
 	}
 
-	for _, h := range NsqGroups[group] {
-		h.RunInit(ctx)
+	for _, h := range nsqGroups[group] {
+		h.runInit(ctx)
 
-		for i := 0; i < h.GetSize(); i++ {
-			go runNsqConsumer(ctx, h, conf, false)
-
-			if h.IsOpenChannelTopic() {
-				go runNsqConsumer(ctx, h, conf, true)
+		for i := 0; i < 2; i++ {
+			fn := runNsqConsumer(h, false)
+			go runHandler(ctx, h, false, fn)
+			if h.isOpenChannelTopic() {
+				fn := runNsqConsumer(h, true)
+				go runHandler(ctx, h, true, fn)
 			}
 		}
 	}
 	return true
 }
 
-func runNsqConsumer(ctx context.Context, h INsqHandler, conf Config, isChannelTopic bool) {
-	var topic string
-	if isChannelTopic {
-		topic = h.GetChannelTopic()
+func runNsqConsumer(h *NsqHandler, isChannelTopic bool) gonsq.HandlerFunc {
+	var log logger.ILogger
+	if h.Logger == nil {
+		log = logger.NewLogger(func(config *logger.Config) {
+			config.LogName = h.Topic
+		})
 	} else {
-		topic = h.GetTopic()
+		log = h.Logger
 	}
-
-	manager, err := NewNsqConsumer(ctx, topic, h.GetChannel(), func(nc *gonsq.Config) {
-		nc.MaxAttempts = h.GetMaxAttepts()
-		nc.MaxInFlight = 10
-	})
-
-	if err != nil {
-		fmt.Println("NewNsqConsumer err:", err)
-	}
-
-	log := logger.NewLogger(func(config *logger.Config) {
-		config.LogName = h.GetChannel()
-	})
 
 	var fn gonsq.HandlerFunc = func(m *gonsq.Message) error {
 		m.DisableAutoResponse()
-		d := debug.NewDebugTag()
+		done := make(chan struct{})
+
 		defer func() {
-			endHandler(h.GetTopic()+":"+h.GetChannel(), d)
+			if h.TouchDuration > 0 {
+				done <- struct{}{}
+			}
 			if err := recover(); err != nil {
-				log.Error("[Nsq Consumer Handler Recover]%s%s", err, debug.Stack(1))
-				should, t := h.GetShouldRequeue(m)
+				log.Error("[Nsq Consumer Handler Recover]%s%s", err, string(stack(1)))
+				should, t := h.getShouldRequeue(m)
 				if should {
 					m.Requeue(t)
 				}
 			}
 		}()
 
-		hd := h.GetHandle()
-		err := hd(d, log, m)
-		if err != nil {
-			d.Tag(h.GetTopic()+":"+h.GetChannel(), err.Error())
+		// 如果开启了定时touch，则定时touch message，让服务端保持消息活跃
+		if h.TouchDuration > 0 {
+			go func() {
+				t := time.NewTicker(h.TouchDuration)
 
-			if _, ok := err.(*debugError); !ok {
-				log.Errorf("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
-					"error":   err.Error(),
-					"channel": h.GetTopic() + ":" + h.GetChannel(),
-					"data":    string(m.Body),
-				})
+				for {
+					select {
+					case <-t.C:
+						m.Touch()
+					case <-done:
+						t.Stop()
+						return
+					}
+				}
+			}()
+		}
+
+		err := h.handler(log, m)
+		if err != nil {
+			errdata := map[string]string{
+				"error":   err.Error(),
+				"channel": h.getChannelTopic(),
+				"data":    string(m.Body),
+			}
+			if _, ok := err.(*debugError); ok {
+				log.Data(errdata).Debugf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
 			} else {
-				log.Debugf("[NSQ Consumer Error:"+h.GetTopic()+":"+h.GetChannel()+"]%v", map[string]string{
-					"error":   err.Error(),
-					"channel": h.GetTopic() + ":" + h.GetChannel(),
-					"data":    string(m.Body),
-				})
+				log.Data(errdata).Errorf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
 			}
 
-			should, t := h.GetShouldRequeue(m)
+			should, t := h.getShouldRequeue(m)
 			if should {
-				//m.RequeueWithoutBackoff(t)
-				m.Requeue(t)
+				// 如果任务开启了channel topic功能，并且当前handler的topic不是channel topic，则写入到channel topic
+				if h.isOpenChannelTopic() && !isChannelTopic {
+					nsq, err := NewProducer(h.Connect)
+					if err != nil {
+						logger.Error("[NSQ Push Channel Topic] new producer error", err)
+						m.RequeueWithoutBackoff(t)
+					} else {
+						err := nsq.Publish(h.getChannelTopic(), m.Body)
+						if err != nil {
+							logger.Error("[NSQ Push Channel Topic] publish error", err)
+							m.RequeueWithoutBackoff(t)
+						} else {
+							// 丢入子topic之后，主topic将消息结束掉
+							m.Finish()
+						}
+					}
+
+				} else {
+					m.RequeueWithoutBackoff(t)
+					// m.Requeue(t)
+				}
+				return nil
 			}
 		}
 		m.Finish()
 		return nil
 	}
-
-	manager.AddHandler(fn)
-	go manager.Run(conf)
+	return fn
 }
 
-func endHandler(dir string, d *debug.DebugTag) {
-	d.SaveToHour(dir)
+func runHandler(ctx context.Context, h *NsqHandler, isChannelTopic bool, fn gonsq.HandlerFunc) {
+	var topic string
+	if isChannelTopic {
+		topic = h.getChannelTopic()
+	} else {
+		topic = h.Topic
+	}
+
+	manager, err := NewNsqConsumer(ctx, topic, h.Channel, func(nc *gonsq.Config) {
+		nc.MaxAttempts = h.getMaxAttempts()
+	})
+
+	if err != nil {
+		log.Println("NSQ Consumer err:", err)
+	}
+
+	manager.AddHandler(fn)
+	conf, err := h.conf()
+	if err != nil {
+		logger.Fatal("NSQ config error", err)
+	}
+
+	log.Println(fmt.Sprintf("NSQ Consumer Run:topic[%s] channel[%s] concurrent[%d]", topic, h.Channel, h.getSize()))
+	go manager.Run(conf, h.getSize())
+}
+
+// Stack gets the call stack
+func stack(calldepth int) []byte {
+	var (
+		e             = make([]byte, 1<<16) // 64k
+		nbytes        = runtime.Stack(e, false)
+		ignorelinenum = 2*calldepth + 1
+		count         = 0
+		startIndex    = 0
+	)
+	for i := range e {
+		if e[i] == '\n' {
+			count++
+			if count == ignorelinenum {
+				startIndex = i + 1
+			}
+		}
+	}
+	return e[startIndex:nbytes]
 }
