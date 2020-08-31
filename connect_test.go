@@ -6,7 +6,7 @@ import (
 )
 
 func TestConnect(t *testing.T) {
-	nsqHost := "10.64.146.231"
+	nsqHost := "127.0.0.1"
 	if os.Getenv("DRONE") == "true" {
 		nsqHost = "nsqd"
 	}
