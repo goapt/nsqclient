@@ -11,8 +11,6 @@ jobs:
         image: nsqio/nsq
         ports:
           - 4150:4150
-        command:
-          - /nsqd
     steps:
       - name: Checkout
         uses: actions/checkout@master
