@@ -52,26 +52,21 @@ func runMulti(ctx context.Context, group string) bool {
 	for _, h := range nsqGroups[group] {
 		h.runInit(ctx)
 
-		for i := 0; i < 2; i++ {
-			fn := runNsqConsumer(h, false)
-			go runHandler(ctx, h, false, fn)
-			if h.isOpenChannelTopic() {
-				fn := runNsqConsumer(h, true)
-				go runHandler(ctx, h, true, fn)
-			}
+		fn := runNsqConsumer(h, false)
+		go runHandler(ctx, h, false, fn)
+		if h.isOpenChannelTopic() {
+			fn := runNsqConsumer(h, true)
+			go runHandler(ctx, h, true, fn)
 		}
 	}
 	return true
 }
 
 func runNsqConsumer(h *NsqHandler, isChannelTopic bool) gonsq.HandlerFunc {
-	var log logger.ILogger
 	if h.Logger == nil {
-		log = logger.NewLogger(func(config *logger.Config) {
+		h.Logger = logger.NewLogger(func(config *logger.Config) {
 			config.LogName = h.Topic
 		})
-	} else {
-		log = h.Logger
 	}
 
 	var fn gonsq.HandlerFunc = func(m *gonsq.Message) error {
@@ -83,7 +78,7 @@ func runNsqConsumer(h *NsqHandler, isChannelTopic bool) gonsq.HandlerFunc {
 				done <- struct{}{}
 			}
 			if err := recover(); err != nil {
-				log.Error("[Nsq Consumer Handler Recover]%s%s", err, string(stack(1)))
+				h.Logger.Error("[Nsq Consumer Handler Recover]%s%s", err, string(stack(1)))
 				should, t := h.getShouldRequeue(m)
 				if should {
 					m.Requeue(t)
@@ -108,7 +103,7 @@ func runNsqConsumer(h *NsqHandler, isChannelTopic bool) gonsq.HandlerFunc {
 			}()
 		}
 
-		err := h.handler(log, m)
+		err := h.handler(h.Logger, m)
 		if err != nil {
 			errdata := map[string]string{
 				"error":   err.Error(),
@@ -116,9 +111,9 @@ func runNsqConsumer(h *NsqHandler, isChannelTopic bool) gonsq.HandlerFunc {
 				"data":    string(m.Body),
 			}
 			if _, ok := err.(*debugError); ok {
-				log.Data(errdata).Debugf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
+				h.Logger.Data(errdata).Debugf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
 			} else {
-				log.Data(errdata).Errorf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
+				h.Logger.Data(errdata).Errorf("[NSQ Consumer Error] "+h.getChannelTopic()+" %s", err.Error())
 			}
 
 			should, t := h.getShouldRequeue(m)
